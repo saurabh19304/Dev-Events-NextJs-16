@@ -58,7 +58,13 @@ async function dbConnect(): Promise<Connection> {
   }
 
   // Await the connection and cache it
-  cached.conn = await cached.promise;
+  try {
+        cached.conn = await cached.promise;
+     } catch (error) {
+        cached.conn = null;
+       cached.promise = null;
+       throw error;
+     }
   return cached.conn;
 }
 

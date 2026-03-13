@@ -63,9 +63,10 @@ const EventSchema = new Schema<IEvent>(
     agenda: {
       type: [String],
       required: [true, "Agenda is required"],
-      validate: {
-        validator: (v: string[]) => v.length > 0,
-        message: "Agenda must contain at least one item",
+      validate: { validator: (v: string[]) =>
+                         v.length > 0 &&
+                         v.every((item) => typeof item === "string" && item.trim().length > 0),
+                message: "Agenda must contain at least one non-empty item",
       },
     },
     organizer: {
@@ -77,8 +78,10 @@ const EventSchema = new Schema<IEvent>(
       type: [String],
       required: [true, "Tags are required"],
       validate: {
-        validator: (v: string[]) => v.length > 0,
-        message: "Tags must contain at least one item",
+            validator: (v: string[]) =>
+                       v.length > 0 &&
+                         v.every((item) => typeof item === "string" && item.trim().length > 0),
+                message: "Agenda must contain at least one non-empty item",
       },
     },
   },
@@ -119,10 +122,13 @@ EventSchema.pre("save", function () {
     const timeStr = this.time.trim();
 
     // Match patterns like "9:00 AM", "14:30", "2:00PM"
+    const looksLikeClock =
+            /^\d{1,2}:\d{1,2}(?:\s*(?:AM|PM))?$/i.test(timeStr);
     const match12 = timeStr.match(
-      /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i
-    );
-    const match24 = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+             /^(0?[1-9]|1[0-2]):([0-5]\d)\s*(AM|PM)$/i
+           );
+       const match24 = timeStr.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+
 
     if (match12) {
       // Already 12-hour — normalise spacing and case
