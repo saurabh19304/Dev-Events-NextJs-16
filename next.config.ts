@@ -1,7 +1,18 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+    cacheComponents : true,
+ images: {
+   remotePatterns: [
+{
+        protocol: "https",
+        hostname: "res.cloudinary.com"
+}
+   ]
+ },
+  // Keep mongoose as a Node.js external package on the server.
+  // This avoids Turbopack dev resolving it to a hashed virtual module name.
+  serverExternalPackages: ["mongoose"],
   async rewrites() {
     return [
       {
