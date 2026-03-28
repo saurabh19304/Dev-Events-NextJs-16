@@ -1,8 +1,10 @@
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
 import Event from "./event.model";
+
 // TypeScript interface for the Booking document
 export interface IBooking extends Document {
   eventId: Types.ObjectId;
+  slug: string;
   email: string;
   createdAt: Date;
   updatedAt: Date;
@@ -10,6 +12,7 @@ export interface IBooking extends Document {
 
 // Standard email regex for format validation
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const BookingSchema = new Schema<IBooking>(
   {
@@ -18,6 +21,17 @@ const BookingSchema = new Schema<IBooking>(
       ref: "Event",
       required: [true, "Event ID is required"],
       index: true, // Index for faster lookups by event
+    },
+    slug: {
+      type: String,
+      required: [true, "Slug is required"],
+      trim: true,
+      lowercase: true,
+      index: true, // Index for faster lookups by event slug
+      validate: {
+        validator: (v: string) => SLUG_REGEX.test(v),
+        message: "Slug must be a valid kebab-case value",
+      },
     },
     email: {
       type: String,

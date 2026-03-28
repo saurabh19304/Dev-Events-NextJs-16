@@ -1,14 +1,16 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import BookEvents from "@/components/BookEvents";
-import {getSimilarEventsBySlug} from "@/lib/actions/events.actions";
-import {IEvent} from "@/database";
+import { getSimilarEventsBySlug } from "@/lib/actions/events.actions";
+import { IEvent } from "@/database";
 import EventCard from "@/components/EventCard";
+import { Suspense } from "react";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
 // Shape of the event the page expects from the API
 interface EventDto {
+  _id?: string;
   description: string;
   overview: string;
   image: string;
@@ -48,15 +50,17 @@ const EventAgenda = ({ agendaItems }: { agendaItems: string[] }) => (
   </div>
 );
 
-const EventTags = ({tags} : {tags: string[]}) => {
-    return (
-        <div className="flex flex-row gap-1.5 flex-wrap">
-            {tags.map((tag) => (
-                <div className="pill" key={tag}>{tag}</div>
-            ))}
+const EventTags = ({ tags }: { tags: string[] }) => {
+  return (
+    <div className="flex flex-row gap-1.5 flex-wrap">
+      {tags.map((tag) => (
+        <div className="pill" key={tag}>
+          {tag}
         </div>
-    );
-}
+      ))}
+    </div>
+  );
+};
 
 // Fetch a single event by slug with basic validation and error handling
 const fetchEvent = async (slug: string): Promise<EventDto> => {
@@ -90,14 +94,12 @@ const fetchEvent = async (slug: string): Promise<EventDto> => {
   return data.event;
 };
 
-const eventDetails = async ({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) => {
-  const { slug } = await params;
+const EventContent = async ({ slug }: { slug: string }) => {
   const event = await fetchEvent(slug);
+  if (!event?.description) return notFound();
+
   const {
+    _id,
     description,
     overview,
     image,
@@ -111,13 +113,8 @@ const eventDetails = async ({
     tags,
   } = event;
 
-  if (!description) return notFound();
-
-
   const bookings = 10;
-
-  const similarEvents : IEvent[] = await getSimilarEventsBySlug(slug);
-
+  const similarEvents: IEvent[] = await getSimilarEventsBySlug(slug);
 
   return (
     <section id="event">
@@ -157,25 +154,21 @@ const eventDetails = async ({
             <p>{organizer}</p>
           </section>
 
-          <EventTags tags={event.tags}/>
-
+          <EventTags tags={tags} />
         </div>
 
         <aside className="booking">
           <div className="signup-card">
             <h2>Book Your Spot</h2>
             {bookings > 0 ? (
-                <p className="text-sm">
-                  Join with {bookings} others who have booked the spot . Don't miss out!
-                </p>
+              <p className="text-sm">
+                Join with {bookings} others who have booked the spot . Don't miss out!
+              </p>
             ) : (
-                <p className="text-sm">
-                    Be the first to book your spot for this event!
-                </p>
+              <p className="text-sm">Be the first to book your spot for this event!</p>
             )}
 
-            <BookEvents />
-
+            <BookEvents eventId={_id ?? ""} slug={slug} />
           </div>
         </aside>
       </div>
@@ -183,13 +176,28 @@ const eventDetails = async ({
       <div className="flex w-full flex-col gap-4 pt-20">
         <h2>Similar Events</h2>
         <div className="events">
-            {similarEvents.length > 0 && similarEvents.map((similarEvent : IEvent) => (
-                < EventCard key={similarEvent._id} {...similarEvent}/>
-            ) )}
+          {similarEvents.length > 0 &&
+            similarEvents.map((similarEvent: IEvent) => (
+              <EventCard key={similarEvent._id} {...similarEvent} />
+            ))}
         </div>
       </div>
-
     </section>
+  );
+};
+
+const EventPage = async ({ paramsPromise }: { paramsPromise: Promise<{ slug: string }> }) => {
+  const { slug } = await paramsPromise;
+  if (!slug) return notFound();
+  return <EventContent slug={slug} />;
+};
+
+const eventDetails = ({ params }: { params: Promise<{ slug: string }> }) => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      {/* Resolve params inside Suspense to satisfy Next.js runtime data requirements */}
+      <EventPage paramsPromise={params} />
+    </Suspense>
   );
 };
 
